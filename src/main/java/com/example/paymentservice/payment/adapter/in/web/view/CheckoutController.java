@@ -1,4 +1,4 @@
-package com.example.paymentservice.adapter.in.web.view;
+package com.example.paymentservice.payment.adapter.in.web.view;
 
 import com.example.paymentservice.common.WebAdapter;
 import org.springframework.stereotype.Controller;
