@@ -1,0 +1,11 @@
+package com.example.paymentservice.payment.test;
+
+import com.example.paymentservice.payment.domain.PaymentEvent;
+import reactor.core.publisher.Mono;
+
+public interface PaymentDatabaseHelper {
+
+  PaymentEvent getPayments(String orderId);
+
+  Mono<Void> clean();
+}
