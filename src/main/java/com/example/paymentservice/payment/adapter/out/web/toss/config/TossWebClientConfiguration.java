@@ -1,4 +1,4 @@
-package com.example.paymentservice.payment.adapter.out.web.config;
+package com.example.paymentservice.payment.adapter.out.web.toss.config;
 
 import java.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
