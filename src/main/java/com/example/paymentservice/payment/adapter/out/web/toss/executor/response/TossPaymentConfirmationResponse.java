@@ -3,8 +3,10 @@ package com.example.paymentservice.payment.adapter.out.web.toss.executor.respons
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
 
 @Getter
+@ToString
 public class TossPaymentConfirmationResponse {
 
   private String version;
@@ -15,7 +17,7 @@ public class TossPaymentConfirmationResponse {
   private String mId;
   private String currency;
   private String method;
-  private int totalAmount;
+  private Integer totalAmount;
   private int balanceAmount;
   private String status;
   private String requestedAt;
@@ -42,10 +44,55 @@ public class TossPaymentConfirmationResponse {
   private List<CashReceipt> cashReceipts;
   private Discount discount;
 
+  @Builder
+  public TossPaymentConfirmationResponse(String approvedAt, int balanceAmount, List<Cancel> cancels,
+      Card card, CashReceipt cashReceipt, List<CashReceipt> cashReceipts, Checkout checkout,
+      String country, boolean cultureExpense, String currency, Discount discount, EasyPay easyPay,
+      TossFailureResponse failure, GiftCertificate giftCertificate, String lastTransactionKey,
+      String method, String mId, MobilePhone mobilePhone, String orderId, String orderName,
+      String paymentKey, Receipt receipt, String requestedAt, String status, int suppliedAmount,
+      int taxExemptionAmount, int taxFreeAmount, Integer totalAmount, Transfer transfer,
+      String type,
+      boolean useEscrow, int vat, String version, VirtualAccount virtualAccount) {
+    this.approvedAt = approvedAt;
+    this.balanceAmount = balanceAmount;
+    this.cancels = cancels;
+    this.card = card;
+    this.cashReceipt = cashReceipt;
+    this.cashReceipts = cashReceipts;
+    this.checkout = checkout;
+    this.country = country;
+    this.cultureExpense = cultureExpense;
+    this.currency = currency;
+    this.discount = discount;
+    this.easyPay = easyPay;
+    this.failure = failure;
+    this.giftCertificate = giftCertificate;
+    this.lastTransactionKey = lastTransactionKey;
+    this.method = method;
+    this.mId = mId;
+    this.mobilePhone = mobilePhone;
+    this.orderId = orderId;
+    this.orderName = orderName;
+    this.paymentKey = paymentKey;
+    this.receipt = receipt;
+    this.requestedAt = requestedAt;
+    this.status = status;
+    this.suppliedAmount = suppliedAmount;
+    this.taxExemptionAmount = taxExemptionAmount;
+    this.taxFreeAmount = taxFreeAmount;
+    this.totalAmount = totalAmount;
+    this.transfer = transfer;
+    this.type = type;
+    this.useEscrow = useEscrow;
+    this.vat = vat;
+    this.version = version;
+    this.virtualAccount = virtualAccount;
+  }
 
   @Builder
   @Getter
-  public class Cancel {
+  public static class Cancel {
     private Integer cancelAmount;
     private String cancelReason;
     private Integer taxFreeAmount;
@@ -60,7 +107,7 @@ public class TossPaymentConfirmationResponse {
 
   @Builder
   @Getter
-  public class Card {
+  public static class Card {
     private Integer amount;
     private String issuerCode;
     private String acquirerCode;
@@ -75,7 +122,7 @@ public class TossPaymentConfirmationResponse {
 
   @Builder
   @Getter
-  public class VirtualAccount {
+  public static class VirtualAccount {
     private String accountType;
     private String accountNumber;
     private String bankCode;
@@ -90,7 +137,7 @@ public class TossPaymentConfirmationResponse {
 
   @Builder
   @Getter
-  public class MobilePhone {
+  public static class MobilePhone {
     private String customerMobilePhone;
     private String settlementStatus;
     private String receiptUrl;
@@ -98,33 +145,33 @@ public class TossPaymentConfirmationResponse {
 
   @Builder
   @Getter
-  public class GiftCertificate {
+  public static class GiftCertificate {
     private String approveNo;
     private String settlemnetStatus;
   }
 
   @Builder
   @Getter
-  public class Transfer {
+  public static class Transfer {
     private String bankCode;
     private String settlementStatus;
   }
 
   @Builder
   @Getter
-  public class Receipt {
+  public static class Receipt {
     private String url;
   }
 
   @Builder
   @Getter
-  public class Checkout {
+  public static class Checkout {
     private String url;
   }
 
   @Builder
   @Getter
-  public class EasyPay {
+  public static class EasyPay {
     private String provider;
     private Integer amount;
     private Integer discountAmount;
@@ -132,14 +179,14 @@ public class TossPaymentConfirmationResponse {
 
   @Builder
   @Getter
-  public class TossFailureResponse {
+  public static class TossFailureResponse {
     private String code;
     private String message;
   }
 
   @Builder
   @Getter
-  public class CashReceipt {
+  public static class CashReceipt {
     private String type;
     private String receiptKey;
     private String issueNumber;
@@ -150,13 +197,13 @@ public class TossPaymentConfirmationResponse {
 
   @Builder
   @Getter
-  public class Discount {
+  public static class Discount {
     private Integer amount;
   }
 
   @Builder
   @Getter
-  public class RefundReceiveAccount {
+  public static class RefundReceiveAccount {
     private String bankCode;
     private String accountNumber;
     private String holderName;

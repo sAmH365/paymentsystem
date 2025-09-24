@@ -1,6 +1,7 @@
 package com.example.paymentservice.payment.adapter.out.persistent.repository;
 
 import com.example.paymentservice.payment.adapter.out.persistent.exception.PaymentAlreadyProcessedException;
+import com.example.paymentservice.payment.application.port.out.PaymentStatusUpdateCommand;
 import com.example.paymentservice.payment.domain.PaymentStatus;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,8 +29,50 @@ public class R2DBCPaymentStatusUpdateRepository implements PaymentStatusUpdateRe
         .flatMap(result -> updatePaymentOrderStatus(orderId, PaymentStatus.EXECUTING))
         .flatMap(result -> updatePaymentKey(orderId, paymentKey))
         .as(transactionalOperator::transactional)
-        .thenReturn(true)
-    ;
+        .thenReturn(true);
+  }
+
+  @Override
+  public Mono<Boolean> updatePaymentStatus(PaymentStatusUpdateCommand command) {
+    return switch (command.getStatus()) {
+      case SUCCESS -> updatePaymentStatusToSuccess(command);
+      case FAILURE -> updatePaymentStatusToFailure(command);
+      case UNKNOWN -> updatePaymentStatusToUnknown(command);
+      default -> throw new IllegalArgumentException(
+          "결제 상태 (status: " + command.getStatus() + ") 는 올바르지 않은 결제 상태입니다."
+      );
+    };
+  }
+
+  private Mono<Boolean> updatePaymentStatusToSuccess(PaymentStatusUpdateCommand command) {
+    return selectPaymentOrderStatus(command.getOrderId())
+        .collectList()
+        .flatMap(list -> insertPaymentHistory(list, command.getStatus(), "PAYMENT_CONFIRMATION_DONE"))
+        .flatMap(v -> updatePaymentOrderStatus(command.getOrderId(), command.getStatus()))
+        .flatMap(v -> updatePaymentEventExtraDetails(command))
+//        .flatMap(v -> paymentOutboxRepository.insertOutbox(command))
+//        .flatMap(v -> paymentEventMessagePublisher.publishEvent(v))
+        .as(transactionalOperator::transactional) // Java에서는 함수형으로 변환
+        .thenReturn(true);
+  }
+
+  private Mono<Boolean> updatePaymentStatusToFailure(PaymentStatusUpdateCommand command) {
+    return selectPaymentOrderStatus(command.getOrderId())
+        .collectList()
+        .flatMap(list -> insertPaymentHistory(list, command.getStatus(), command.getFailure().toString()))
+        .flatMap(v -> updatePaymentOrderStatus(command.getOrderId(), command.getStatus()))
+        .as(transactionalOperator::transactional)
+        .thenReturn(true);
+  }
+
+  private Mono<Boolean> updatePaymentStatusToUnknown(PaymentStatusUpdateCommand command) {
+    return selectPaymentOrderStatus(command.getOrderId())
+        .collectList()
+        .flatMap(list -> insertPaymentHistory(list, command.getStatus(), command.getFailure().toString()))
+        .flatMap(v -> updatePaymentOrderStatus(command.getOrderId(), command.getStatus()))
+        .flatMap(v -> incrementPaymentOrderFailedCount(command))
+        .as(transactionalOperator::transactional)
+        .thenReturn(true);
   }
 
   private Mono<List<Pair<Long, String>>> checkPreviousPaymentOrderStatus(String orderId) {
@@ -47,6 +90,19 @@ public class R2DBCPaymentStatusUpdateRepository implements PaymentStatusUpdateRe
         })
         .collectList();
   }
+
+  private Mono<Long> updatePaymentEventExtraDetails(PaymentStatusUpdateCommand command) {
+    return databaseClient.sql(UPDATE_PAYMENT_EVENT_EXTRA_DETAILS_QUERY)
+        .bind("orderName", command.getExtraDetails().getOrderName())
+        .bind("method", command.getExtraDetails().getMethod().name())
+        .bind("approvedAt", command.getExtraDetails().getApprovedAt().toString())
+        .bind("orderId", command.getOrderId())
+        .bind("type", command.getExtraDetails().getType())
+        .bind("pspRawData", command.getExtraDetails().getPspRawData())
+        .fetch()
+        .rowsUpdated();
+  }
+
 
   private Flux<Pair<Long, String>> selectPaymentOrderStatus(String orderId) {
     return databaseClient.sql(SELECT_PAYMENT_ORDER_STATUS_QUERY)
@@ -89,6 +145,13 @@ public class R2DBCPaymentStatusUpdateRepository implements PaymentStatusUpdateRe
         .rowsUpdated();
   }
 
+  private Mono<Long> incrementPaymentOrderFailedCount(PaymentStatusUpdateCommand command) {
+    return databaseClient.sql(INCREMENT_PAYMENT_ORDER_FAILED_COUNT_QUERY)
+        .bind("orderId", command.getOrderId())
+        .fetch()
+        .rowsUpdated();
+  }
+
   private Mono<?> updatePaymentKey(String orderId, String paymentKey) {
     return databaseClient.sql(UPDATE_PAYMENT_KEY_QUERY)
         .bind("orderId", orderId)
@@ -101,17 +164,17 @@ public class R2DBCPaymentStatusUpdateRepository implements PaymentStatusUpdateRe
       SELECT id, payment_order_status
       FROM payment_orders
       WHERE order_id = :orderId
-      """.stripIndent();
+      """;
 
   private static final String UPDATE_PAYMENT_ORDER_STATUS_QUERY = """
       UPDATE payment_orders
       SET payment_order_status = :status, updated_at = CURRENT_TIMESTAMP
       WHERE order_id = :orderId
-      """.stripIndent();
+      """;
 
   private static String INSERT_PAYMENT_HISTORY_QUERY(String valuesClauses) {
-    return "INSERT INTO payment_order_histories " +
-        "(payment_order_id, previous_status, new_status, reason) " +
+    return "INSERT INTO payment_order_history " +
+        "(payment_order_id, payment_order_status, new_status, reason) " +
         "VALUES " + valuesClauses;
   }
 
@@ -119,5 +182,22 @@ public class R2DBCPaymentStatusUpdateRepository implements PaymentStatusUpdateRe
       UPDATE payment_events
       SET payment_key = :paymentKey
       WHERE order_id = :orderId
-      """.stripIndent();
+      """;
+
+  private static final String UPDATE_PAYMENT_EVENT_EXTRA_DETAILS_QUERY = """
+    UPDATE payment_events
+    SET order_name = :orderName,
+        method = :method,
+        approved_at = :approvedAt,
+        type = :type,
+        updated_at = CURRENT_TIMESTAMP,
+        psp_raw_data = :pspRawData
+    WHERE order_id = :orderId
+    """;
+
+  private static final String INCREMENT_PAYMENT_ORDER_FAILED_COUNT_QUERY = """
+    UPDATE payment_orders
+    SET failed_count = failed_count + 1 
+    WHERE order_id = :orderId
+    """;
 }

@@ -23,7 +23,7 @@ public class R2DBCPaymentValidationRepository implements PaymentValidationReposi
         .first()
         .handle((row, sink) -> {
           if (((BigDecimal) row.get("total_amount")).longValue() == amount) {
-
+            sink.next(true);
           } else {
             sink.error(new PaymentValidationException(String.format("결제 (orderId: %s) 에서 금액 (amount: %d)이 올바르지 않습니다.", orderId, amount)));
           }

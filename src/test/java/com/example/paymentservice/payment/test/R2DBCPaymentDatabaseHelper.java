@@ -6,6 +6,7 @@ import com.example.paymentservice.payment.domain.PaymentOrder;
 import com.example.paymentservice.payment.domain.PaymentStatus;
 import com.example.paymentservice.payment.domain.PaymentType;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.Optional;
@@ -44,7 +45,7 @@ public class R2DBCPaymentDatabaseHelper implements PaymentDatabaseHelper{
                       .paymentType(first.get("type") != null ? PaymentType.get((String) first.get("type")) : null)
                       .paymentMethod(first.get("method") != null ? PaymentMethod.valueOf((String) first.get("method")) : null)
                       .approvedAt(first.get("approved_at") != null
-                          ? ((ZonedDateTime) first.get("approved_at")).toLocalDateTime()
+                          ? ((LocalDateTime) first.get("approved_at"))
                           : null)
                       .isPaymentDone((Boolean) (first.get("is_payment_done")))
                       .paymentOrders(results.stream()
@@ -70,7 +71,8 @@ public class R2DBCPaymentDatabaseHelper implements PaymentDatabaseHelper{
 
   @Override
   public Mono<Void> clean() {
-    return deletePaymentOrders()
+    return deletePaymentOrderHistories()
+        .flatMap(result -> deletePaymentOrders())
         .flatMap(result -> deletePaymentEvent())
         .as(transactionalOperator::transactional)
         .then();
@@ -78,6 +80,13 @@ public class R2DBCPaymentDatabaseHelper implements PaymentDatabaseHelper{
 
   private Mono<Long> deletePaymentEvent() {
     return databaseClient.sql(DELETE_PAYMENT_EVENT_QUERY)
+        .fetch()
+        .rowsUpdated();
+  }
+
+
+  private Mono<Long> deletePaymentOrderHistories() {
+    return databaseClient.sql(DELETE_PAYMENT_ORDER_HISTORY_QUERY)
         .fetch()
         .rowsUpdated();
   }
@@ -92,12 +101,16 @@ public class R2DBCPaymentDatabaseHelper implements PaymentDatabaseHelper{
       SELECT * FROM payment_events pe
       INNER JOIN payment_orders po ON pe.order_id = po.order_id
       WHERE pe.order_id = :orderId
-      """.stripIndent();
+      """;
 
   final String DELETE_PAYMENT_EVENT_QUERY = """
       DELETE FROM payment_events
-      """.stripIndent();
+      """;
   final String DELETE_PAYMENT_ORDER_QUERY = """
       DELETE FROM payment_orders
-      """.stripIndent();
+      """;
+
+  final String DELETE_PAYMENT_ORDER_HISTORY_QUERY = """
+      DELETE FROM payment_order_history
+      """;
 }

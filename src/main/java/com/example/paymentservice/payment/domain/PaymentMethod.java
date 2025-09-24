@@ -12,4 +12,8 @@ public enum PaymentMethod {
   PaymentMethod(String description) {
     this.description = description;
   }
+
+  public static PaymentMethod get(String type) {
+    return PaymentMethod.valueOf(type);
+  }
 }
